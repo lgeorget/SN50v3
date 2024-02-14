@@ -562,7 +562,7 @@ void fdr_config(void)
 	dwelltime=1;
 	#endif
   			
-	workmode=1;	
+	workmode=12;	
   power_5v_time=500;	
 	inmode=2;		
 	inmode2=2;		

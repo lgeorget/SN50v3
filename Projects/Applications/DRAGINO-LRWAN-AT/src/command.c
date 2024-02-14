@@ -2545,7 +2545,7 @@ static int at_mod_func(int opt, int argc, char *argv[])
         
             value = strtol((const char *)argv[0], NULL, 0);
 					
-					  if((value>=1)&&(value<=11))
+					  if((value>=1)&&(value<=12))
 						{
 							workmode=value;		
               LOG_PRINTF(LL_DEBUG,"Attention:Take effect after ATZ\r\n");							
@@ -2555,7 +2555,7 @@ static int at_mod_func(int opt, int argc, char *argv[])
             }
 						else
 						{
-							LOG_PRINTF(LL_DEBUG,"Mode of range is 1 to 11\r\n");		
+							LOG_PRINTF(LL_DEBUG,"Mode of range is 1 to 12\r\n");		
 							ret = LWAN_PARAM_ERROR;
 						}
             break;

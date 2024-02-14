@@ -92,6 +92,9 @@ uint16_t REJOIN_TX_DUTYCYCLE=20;//min
 uint32_t APP_TX_DUTYCYCLE=300000;//ms
 uint32_t count1=0,count2=0;
 
+TimerTime_t lastCountInt=0U;
+uint16_t intensity=0U;
+
 uint8_t downlink_detect_switch=0;
 uint16_t downlink_detect_timeout=0;
 uint8_t downlink_received_status=0;
@@ -419,7 +422,7 @@ int main(void)
 					
 				if(joined_finish==1)
 				{		
-					if(((workmode!=6)&&(workmode!=9)&&(workmode!=3)&&(workmode!=8))&&(exti_flag==1))
+					if(((workmode!=6)&&(workmode!=9)&&(workmode!=10)&&(workmode!=3)&&(workmode!=8))&&(exti_flag==1))
 					{
 						if((( LoRaMacState & 0x00000001 ) != 0x00000001 )&&(( LoRaMacState & 0x00000010 ) != 0x00000010))
 						{
@@ -933,6 +936,37 @@ static void Send( void )
 		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.temp_tmp117*100);
 		AppData.Buff[i++] = 0x00;   
 		AppData.Buff[i++] = 0x00; 
+	}
+	else if(workmode==12)
+	{
+		AppData.Buff[i++] =(bsp_sensor_data_buff.bat_mv>>8);       
+		AppData.Buff[i++] = bsp_sensor_data_buff.bat_mv & 0xFF;
+	
+		AppData.Buff[i++]=(intensity)>>8;     
+		AppData.Buff[i++]=intensity & 0xFF;
+	
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pa8)>>24;      
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pa8)>>16;
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pa8)>>8;   
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pa8);
+	
+		if(bh1750flags==1)
+		{
+			AppData.Buff[i++] =(bsp_sensor_data_buff.illuminance)>>8;      
+			AppData.Buff[i++] =(bsp_sensor_data_buff.illuminance);
+			AppData.Buff[i++] = 0x00;   
+			AppData.Buff[i++] = 0x00;				
+		}	
+		else
+		{
+			AppData.Buff[i++] =(int)(bsp_sensor_data_buff.temp_sht*10)>>8;      
+			AppData.Buff[i++] =(int)(bsp_sensor_data_buff.temp_sht*10);
+			AppData.Buff[i++] =(int)(bsp_sensor_data_buff.hum_sht*10)>>8;   
+			AppData.Buff[i++] =(int)(bsp_sensor_data_buff.hum_sht*10);
+		}
+
+		/* reset max intensity */
+		intensity = 0U;
 	}
 	
   AppData.BuffSize = i;

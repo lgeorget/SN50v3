@@ -41,6 +41,7 @@ extern uint32_t count1,count2;
 extern uint8_t pwm_timer;
 extern uint16_t IC1[4],IC2[4];
 static float tmp117_temp_record=10;
+extern uint16_t intensity;
 
 void BLE_power_Init(void)
 {
@@ -72,7 +73,7 @@ void BSP_sensor_Init( void  )
 	 GPIO_EXTI8_IoInit(0);		
 	 GPIO_EXTI15_IoInit(0);
 	
-	 if((workmode==1)||(workmode==3))
+	 if((workmode==1)||(workmode==3)||(workmode==12))
 	 {
 		 I2C_GPIO_MODE_Config();
 		 if(check_sht20_connect()==1)
@@ -465,6 +466,18 @@ void BSP_sensor_Read( sensor_t *sensor_data , uint8_t message ,uint8_t mod_temp)
 		sensor_data->in1=Digital_input_Read(3,message);
 		sensor_data->exit_pa8=Digital_input_Read(2,message);		
 	}		
+	else if(mod_temp==12)
+	{
+		I2C_read_data(sensor_data,flags,message);
+		POWER_open_time(power_5v_time);
+		sensor_data->count_pa8=count1;
+		if(message==1)
+		{
+			LOG_PRINTF(LL_DEBUG,"PA8 count:%u\r\n",(unsigned int)count1);
+			LOG_PRINTF(LL_DEBUG,"Rate:%u\r\n",(unsigned int)intensity);
+			delay_ms(20);
+		}
+	}
   POWER_IoDeInit();	
 }
 

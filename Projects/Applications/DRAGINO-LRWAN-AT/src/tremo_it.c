@@ -5,6 +5,7 @@
 #include "tremo_uart.h"
 #include "tfsensor.h"
 #include "tremo_timer.h"
+#include "timer.h"
 
 uint16_t IC1[4],IC2[4];
 uint16_t IC1Value=0,IC2Value=0;
@@ -16,12 +17,17 @@ extern bool join_network;
 extern uint8_t inmode,inmode2,inmode3;
 extern uint32_t count1,count2;
 extern uint8_t workmode;
+extern uint32_t lastCountInt;
+extern uint16_t intensity;
 
 extern void RadioOnDioIrq(void);
 extern void RtcOnIrq(void);
 extern void linkwan_serial_input(uint8_t cmd);
 extern void dma0_IRQHandler(void);
 extern void dma1_IRQHandler(void);
+
+#define LOCKOUT_INT_DELAY 500 // ms
+
 /**
  * @brief  This function handles NMI exception.
  * @param  None
@@ -210,6 +216,21 @@ void GPIO_IRQHandler(void)
 					{
 						count1++;
 						exti_flag=1;
+					}
+				}
+				else if((workmode==12)&&((inmode==2)||(inmode==3)))
+				{
+					uint32_t diff = TimerGetElapsedTime(lastCountInt);
+					if (diff > LOCKOUT_INT_DELAY)
+					{
+						count1++;
+						exti_flag=1;
+						lastCountInt = TimerGetCurrentTime();
+						uint16_t newIntensity = 2 * 3600000 / diff;
+						if (newIntensity > intensity)
+						{
+							intensity = newIntensity;
+						}
 					}
 				}
 				else
