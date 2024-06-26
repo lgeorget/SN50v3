@@ -99,12 +99,14 @@ extern uint32_t count1,count2;
 extern float GapValue;
 extern uint8_t pwm_timer;
 extern bool joined_finish;
+extern uint16_t adc_resistance;
 		
 extern bool FDR_status;
 extern uint8_t RX2DR_setting_status;
 
 extern uint8_t downlink_detect_switch;
 extern uint16_t downlink_detect_timeout;
+
 
 extern uint8_t confirmed_uplink_counter_retransmission_increment_switch;
 extern uint8_t confirmed_uplink_retransmission_nbtrials;
@@ -190,6 +192,7 @@ static int at_getsensorvalue_func(int opt, int argc, char *argv[]);
 static int at_disfcntcheck_func(int opt, int argc, char *argv[]);
 static int at_dismacans_func(int opt, int argc, char *argv[]);
 static int at_rxdatatest_func(int opt, int argc, char *argv[]);
+static int at_adcres_func(int opt, int argc, char *argv[]);
 
 static at_cmd_t g_at_table[] = {
 	  {AT_DEBUG, at_debug_func},
@@ -257,7 +260,8 @@ static at_cmd_t g_at_table[] = {
 		{AT_GETSENSORVALUE, at_getsensorvalue_func},
 		{AT_DISFCNTCHECK, at_disfcntcheck_func},		
 		{AT_DISMACANS, at_dismacans_func},
-		{AT_RXDATEST,at_rxdatatest_func},
+		{AT_RXDATEST, at_rxdatatest_func},
+		{AT_ADCRES, at_adcres_func},
 };
 
 #define AT_TABLE_SIZE	(sizeof(g_at_table) / sizeof(at_cmd_t))
@@ -3382,6 +3386,50 @@ static int at_rxdatatest_func(int opt, int argc, char *argv[])
     
     return ret;	
 }
+
+
+static int at_adcres_func(int opt, int argc, char *argv[])
+{
+    int ret = LWAN_PARAM_ERROR;
+    
+    switch(opt) {
+         case QUERY_CMD: {
+            ret = LWAN_SUCCESS;
+            snprintf((char *)atcmd, ATCMD_SIZE, "%.1f kOhms\r\n", (float)adc_resistance / 10.);
+
+					 break;
+        }
+        
+        case SET_CMD: {
+            if(argc < 1) break;
+            
+						uint32_t res = strtol((const char *)argv[0], NULL, 0);
+					
+						if (res>1000 && (res/100) < 0xFFFFFFFFU && res%100 == 0)
+            {
+							adc_resistance = res/100;
+              ret = LWAN_SUCCESS;
+							write_config_in_flash_status=1;
+							atcmd[0] = '\0';
+            }
+            else
+            {
+              ret = LWAN_PARAM_ERROR;
+            }
+            break;
+        }
+								
+				case DESC_CMD: {
+					ret = LWAN_SUCCESS;
+					snprintf((char *)atcmd, ATCMD_SIZE, "Get or Set the value of the resistance soldered between power and PA4 to divide current for the ADC, must be divisible by 100 and between 1000 and 2**16\r\n");
+					break;
+				}
+        default: break;
+    }
+
+    return ret;			
+}
+
 
 // this can be in intrpt context
 void linkwan_serial_input(uint8_t cmd)

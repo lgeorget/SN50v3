@@ -94,6 +94,7 @@ uint32_t count1=0,count2=0;
 
 TimerTime_t lastCountInt=0U;
 uint16_t intensity=0U;
+uint16_t adc_resistance=57000U;
 
 uint8_t downlink_detect_switch=0;
 uint16_t downlink_detect_timeout=0;
@@ -861,8 +862,8 @@ static void Send( void )
 		AppData.Buff[i++] =(bsp_sensor_data_buff.bat_mv>>8);
 		AppData.Buff[i++] = bsp_sensor_data_buff.bat_mv & 0xFF;
 
-		AppData.Buff[i++]=(int)(bsp_sensor_data_buff.temp1*10)>>8;
-		AppData.Buff[i++]=(int)(bsp_sensor_data_buff.temp1*10);
+		AppData.Buff[i++]=(int)(adc_resistance)>>8;
+		AppData.Buff[i++]=(int)(adc_resistance);
 
 		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.ADC_4)>>8;
 		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.ADC_4);
@@ -1603,6 +1604,21 @@ static void LORA_RxData( lora_AppData_t *AppData )
 				}
 				break;
 			}
+			
+			case 0x70:
+      {
+				if( AppData->BuffSize == 3 )         
+        {       
+            uint16_t value = (AppData->Buff[1] << 8)|(AppData->Buff[2]);   //---->AT+ADCRES
+            if( value >= 1000 )
+            {
+                adc_resistance=value;
+								downlink_config_store_in_flash=1;
+						}
+				}                               
+        break;
+     }
+
 
 		default:
 			break;

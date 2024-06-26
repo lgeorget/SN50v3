@@ -156,6 +156,8 @@ extern uint8_t LinkADR_NbTrans_uplink_counter_retransmission_increment_switch;
 extern uint8_t LinkADR_NbTrans_retransmission_nbtrials;
 extern uint16_t unconfirmed_uplink_change_to_confirmed_uplink_timeout;
 
+extern uint16_t adc_resistance;
+
 extern bool print_isdone(void);
 
 #define HEX16(X)  X[0],X[1], X[2],X[3], X[4],X[5], X[6],X[7],X[8],X[9], X[10],X[11], X[12],X[13], X[14],X[15]
@@ -1254,6 +1256,8 @@ void Flash_Store_Config(void)
 	store_config_in_flash[77]=(int)(GapValue*10);
 	
 	store_config_in_flash[78]=pwm_timer;
+	store_config_in_flash[79] = (adc_resistance)>>8 & 0xFF;
+	store_config_in_flash[80] = adc_resistance;
 	
 	__disable_irq();	
 	flash_erase_page(FLASH_USER_START_ADDR_CONFIG);
@@ -1422,7 +1426,8 @@ void Flash_Read_Config(void)
 	
 	GapValue=(float)((read_config_in_flash[74]<<24 | read_config_in_flash[75]<<16 | read_config_in_flash[76]<<8 | read_config_in_flash[77])/10.0);
 	
-	pwm_timer=read_config_in_flash[78];;
+	pwm_timer=read_config_in_flash[78];
+	adc_resistance = read_config_in_flash[79]<<8 | read_config_in_flash[80];
 }
 
 uint8_t string_touint(void)
