@@ -95,6 +95,7 @@ uint32_t count1=0,count2=0;
 TimerTime_t lastCountInt=0U;
 uint16_t intensity=0U;
 uint16_t adc_resistance=57000U;
+uint32_t count_gust=0,max_gust=0;
 
 uint8_t downlink_detect_switch=0;
 uint16_t downlink_detect_timeout=0;
@@ -966,8 +967,19 @@ static void Send( void )
 			AppData.Buff[i++] =(int)(bsp_sensor_data_buff.hum_sht*10);
 		}
 
-		/* reset max intensity */
+		/* truncate the data, it should fit in a 16-bit counter anyway */
+		AppData.Buff[i++] = (bsp_sensor_data_buff.count_pa4)>>8;
+		AppData.Buff[i++] = bsp_sensor_data_buff.count_pa4 & 0xFF;
+		AppData.Buff[i++] = (max_gust)>>8;
+		AppData.Buff[i++] = max_gust & 0xFF;
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.ADC_5)>>8;
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.ADC_5);
+
+		/* reset counters and max */
 		intensity = 0U;
+    max_gust = 0U;
+    count_gust = 0U;
+    count2 = 0U;
 	}
 
 	AppData.BuffSize = i;

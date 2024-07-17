@@ -38,11 +38,27 @@ extern uint8_t workmode;
 extern uint8_t inmode,inmode2,inmode3;
 extern uint16_t power_5v_time;
 extern uint32_t count1,count2;
+extern uint32_t max_gust,count_gust;
 extern uint8_t pwm_timer;
 extern uint16_t IC1[4],IC2[4];
 static float tmp117_temp_record=10;
 extern uint16_t intensity;
 extern uint16_t adc_resistance;
+
+static const int GUST_PERIOD = 2250;
+
+static TimerEvent_t GustTimer;
+static void OnGustTimerEvent( void );
+
+static void OnGustTimerEvent( void )
+{
+   TimerSetValue(&GustTimer, GUST_PERIOD);
+   TimerStart(&GustTimer);
+   if (count_gust > max_gust)
+       max_gust = count_gust;
+   count_gust=0;
+}
+
 
 void BLE_power_Init(void)
 {
@@ -168,7 +184,7 @@ void BSP_sensor_Init( void  )
 		LOG_PRINTF(LL_DEBUG,"\n\rUse Sensor is HX711\r\n");	
     delay_ms(20);		 
 	 }
-	 else if((workmode==7)||(workmode==9))	
+	 else if((workmode==7)||(workmode==9)||(workmode==12))	
 	 {
 		 GPIO_EXTI4_IoInit(inmode2);
 		 GPIO_EXTI15_IoInit(inmode3);		 
@@ -192,6 +208,13 @@ void BSP_sensor_Init( void  )
 	 if((workmode==3)||(workmode==8))
 	 {
 		 GPIO_EXTI15_IoInit(inmode3);
+	 }
+	 
+	 if (workmode==12)
+	 {
+      TimerInit(&GustTimer, OnGustTimerEvent);
+      TimerSetValue(&GustTimer, GUST_PERIOD);
+      TimerStart(&GustTimer);
 	 }
 	 
 	 POWER_IoDeInit();	
@@ -380,7 +403,7 @@ void BSP_sensor_Read( sensor_t *sensor_data , uint8_t message ,uint8_t mod_temp)
 			delay_ms(40);
 		}     		
 	}	
-	else if(workmode==10)
+	else if(mod_temp==10)
 	{
 		sensor_data->temp1=DS18B20_Read(1,message);
 		POWER_open_time(power_5v_time);		
@@ -476,10 +499,14 @@ void BSP_sensor_Read( sensor_t *sensor_data , uint8_t message ,uint8_t mod_temp)
 		I2C_read_data(sensor_data,flags,message);
 		POWER_open_time(power_5v_time);
 		sensor_data->count_pa8=count1;
+		sensor_data->count_pa4=count2;
+		sensor_data->ADC_5=ADC_Read(2,message);
+		delay_ms(50);
 		if(message==1)
 		{
 			LOG_PRINTF(LL_DEBUG,"PA8 count:%u\r\n",(unsigned int)count1);
 			LOG_PRINTF(LL_DEBUG,"Rate:%u\r\n",(unsigned int)intensity);
+			LOG_PRINTF(LL_DEBUG,"PA4 count:%u\r\n",(unsigned int)count2);
 			delay_ms(20);
 		}
 	}

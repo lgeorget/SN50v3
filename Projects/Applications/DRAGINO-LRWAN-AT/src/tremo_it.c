@@ -248,7 +248,7 @@ void GPIO_IRQHandler(void)
 				{				
 					exti2_flag=1;
 				}
-				else if((workmode==9)&&((inmode2==2)||(inmode2==3)))
+				else if(((workmode==9)||(workmode==10))&&((inmode2==2)||(inmode2==3)))
 				{
 				 exti2_flag=1;	
 				 count2++;					
