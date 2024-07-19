@@ -424,7 +424,7 @@ int main(void)
 
 		if(joined_finish==1)
 		{
-			if(((workmode!=6)&&(workmode!=9)&&(workmode!=10)&&(workmode!=3)&&(workmode!=8))&&(exti_flag==1))
+			if(((workmode!=6)&&(workmode!=9)&&(workmode!=12)&&(workmode!=10)&&(workmode!=3)&&(workmode!=8))&&(exti_flag==1))
 			{
 				if((( LoRaMacState & 0x00000001 ) != 0x00000001 )&&(( LoRaMacState & 0x00000010 ) != 0x00000010))
 				{
@@ -947,10 +947,10 @@ static void Send( void )
 		AppData.Buff[i++]=(intensity)>>8;
 		AppData.Buff[i++]=intensity & 0xFF;
 
-		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pa8)>>24;
-		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pa8)>>16;
-		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pa8)>>8;
-		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pa8);
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pb15)>>24;
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pb15)>>16;
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pb15)>>8;
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pb15);
 
 		if(bh1750flags==1)
 		{
@@ -970,10 +970,8 @@ static void Send( void )
 		/* truncate the data, it should fit in a 16-bit counter anyway */
 		AppData.Buff[i++] = (bsp_sensor_data_buff.count_pa4)>>8;
 		AppData.Buff[i++] = bsp_sensor_data_buff.count_pa4 & 0xFF;
-		AppData.Buff[i++] = (max_gust)>>8;
 		AppData.Buff[i++] = max_gust & 0xFF;
-		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.ADC_5)>>8;
-		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.ADC_5);
+		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.wind_dir);
 
 		/* reset counters and max */
 		intensity = 0U;
@@ -1907,7 +1905,7 @@ static void send_exti_pa4(void)
 			wakeup_pa4_flag=1;
 		}
 
-		if((workmode==7)||(workmode==9))
+		if((workmode==7)||(workmode==9)||(workmode==12))
 		{
 			gpio_config_stop3_wakeup(GPIOA, GPIO_PIN_4 ,true,wakeup_a4_mode);
 		}
@@ -1935,7 +1933,7 @@ static void send_exti_pa8(void)
 			wakeup_pa8_flag=1;
 		}
 
-		if((workmode!=3)&&(workmode!=8))
+		if((workmode!=3)&&(workmode!=8)&&(workmode!=12))
 		{
 			gpio_config_stop3_wakeup(GPIOA, GPIO_PIN_8 ,true,wakeup_a8_mode);
 		}
@@ -1963,7 +1961,7 @@ static void send_exti_pb15(void)
 			wakeup_pb15_flag=1;
 		}
 
-		if((workmode==3)||(workmode==7)||(workmode==8)||(workmode==9))
+		if((workmode==3)||(workmode==7)||(workmode==8)||(workmode==9)||(workmode==12))
 		{
 			gpio_config_stop3_wakeup(GPIOB, GPIO_PIN_15 ,true,wakeup_b15_mode);
 		}

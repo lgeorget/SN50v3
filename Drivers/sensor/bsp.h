@@ -111,6 +111,10 @@ typedef struct{
 	
 	uint32_t count_pa8;
 	
+	uint32_t count_pb15;
+	
+	uint16_t wind_dir;
+	
   uint16_t pwm_freq;
 	
 	uint16_t pwm_duty;

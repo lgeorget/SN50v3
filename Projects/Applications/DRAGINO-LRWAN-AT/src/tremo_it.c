@@ -15,7 +15,7 @@ extern bool exti_flag,exti2_flag,exti3_flag;
 extern uint8_t user_key_exti_flag;
 extern bool join_network;
 extern uint8_t inmode,inmode2,inmode3;
-extern uint32_t count1,count2;
+extern uint32_t count1,count2,count_gust;
 extern uint8_t workmode;
 extern uint32_t lastCountInt;
 extern uint16_t intensity;
@@ -186,9 +186,9 @@ void TIMER1_IRQHandler(void)
 {
   bool state;
   timer_get_status(TIMER1, TIMER_SR_CC0IF, &state);
-  if (state) 
+  if (state)
 	{
-    timer_clear_status(TIMER1, TIMER_SR_CC0IF);	  		
+    timer_clear_status(TIMER1, TIMER_SR_CC0IF);
 		IC1Value = TIMER1->CCR0;
 		IC2Value = TIMER1->CCR1;
 		if(icnumber<4)
@@ -206,10 +206,10 @@ void TIMER1_IRQHandler(void)
 /*  file (startup_cm4.S).                                               */
 /******************************************************************************/
 void GPIO_IRQHandler(void)
-{	
+{
   if (gpio_get_interrupt_status(GPIOA, GPIO_PIN_8) == SET) {
-			if((inmode!=0)&&(join_network==1))	
-			{		
+			if((inmode!=0)&&(join_network==1))
+			{
 				if((workmode==6)||(workmode==9))
 				{
 					if((inmode==2)||(inmode==3))
@@ -218,7 +218,39 @@ void GPIO_IRQHandler(void)
 						exti_flag=1;
 					}
 				}
-				else if((workmode==12)&&((inmode==2)||(inmode==3)))
+				else
+				{
+					exti_flag=1;
+				}
+			}
+		  gpio_clear_interrupt(GPIOA, GPIO_PIN_8);
+	}
+
+  if (gpio_get_interrupt_status(GPIOA, GPIO_PIN_4) == SET) {
+			if((inmode2!=0)&&(join_network==1))
+			{
+				if(workmode==7)
+				{
+					exti2_flag=1;
+				}
+				else if(((workmode==9)||(workmode==12))&&((inmode2==2)||(inmode2==3)))
+				{
+				 exti2_flag=1;
+				 count2++;
+				 count_gust++;
+				}
+			}
+		  gpio_clear_interrupt(GPIOA, GPIO_PIN_4);
+	}
+
+  if (gpio_get_interrupt_status(GPIOB, GPIO_PIN_15) == SET) {
+			if((inmode3!=0)&&(join_network==1))
+			{
+			 if((workmode==3)||(workmode==7)||(workmode==8)||(workmode==9))
+			 {
+				exti3_flag=1;
+			 }
+				else if((workmode==12)&&((inmode3==2)||(inmode3==3)))
 				{
 					uint32_t diff = TimerGetElapsedTime(lastCountInt);
 					if (diff > LOCKOUT_INT_DELAY)
@@ -233,43 +265,12 @@ void GPIO_IRQHandler(void)
 						}
 					}
 				}
-				else
-				{
-					exti_flag=1;
-				}
-			}				
-		  gpio_clear_interrupt(GPIOA, GPIO_PIN_8);	
-	}	
-	
-  if (gpio_get_interrupt_status(GPIOA, GPIO_PIN_4) == SET) {	
-			if((inmode2!=0)&&(join_network==1))	
-			{		
-				if(workmode==7)
-				{				
-					exti2_flag=1;
-				}
-				else if(((workmode==9)||(workmode==10))&&((inmode2==2)||(inmode2==3)))
-				{
-				 exti2_flag=1;	
-				 count2++;					
-				}
-			}				
-		  gpio_clear_interrupt(GPIOA, GPIO_PIN_4);	
-	}	
+			}
+		  gpio_clear_interrupt(GPIOB, GPIO_PIN_15);
+	}
 
-  if (gpio_get_interrupt_status(GPIOB, GPIO_PIN_15) == SET) {	
-			if((inmode3!=0)&&(join_network==1))	
-			{		
-			 if((workmode==3)||(workmode==7)||(workmode==8)||(workmode==9))
-			 {        				
-				exti3_flag=1;
-			 }
-			}				
-		  gpio_clear_interrupt(GPIOB, GPIO_PIN_15);	
-	}	
-	
-  if (gpio_get_interrupt_status(GPIOC, GPIO_PIN_8) == SET) {	
-			user_key_exti_flag=1;	
-		  gpio_clear_interrupt(GPIOC, GPIO_PIN_8);	
-	}		
+  if (gpio_get_interrupt_status(GPIOC, GPIO_PIN_8) == SET) {
+			user_key_exti_flag=1;
+		  gpio_clear_interrupt(GPIOC, GPIO_PIN_8);
+	}
 }

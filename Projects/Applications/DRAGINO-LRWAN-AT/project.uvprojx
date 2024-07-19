@@ -242,7 +242,7 @@
             <uThumb>1</uThumb>
             <VariousControls>
               <MiscControls>-Wall -Os -ffunction-sections -mfpu=fpv4-sp-d16 -mfloat-abi=softfp -fsingle-precision-constant -std=gnu99 -fno-builtin-printf -fno-builtin-sprintf -fno-builtin-snprintf</MiscControls>
-              <Define>CONFIG_DEBUG_UART=UART0,  REGION_EU868,  CONFIG_LOG,  PRINT_BY_DMA, CONFIG_LORA_USE_TCXO</Define>
+              <Define>CONFIG_DEBUG_UART=UART0,  REGION_EU868,  CONFIG_LOG,  PRINT_BY_DMA, CONFIG_LORA_USE_TCXO, LB_LS</Define>
               <Undefine></Undefine>
               <IncludePath>.\inc;..\..\..\Drivers\CMSIS;..\..\..\Drivers\system;..\..\..\Drivers\crypto\inc;..\..\..\Drivers\peripheral\inc;..\..\..\Drivers\sensor;..\..\..\Middlewares\LoRa\driver;..\..\..\Middlewares\LoRa\system;..\..\..\Middlewares\LoRa\system\Crypto;..\..\..\Middlewares\LoRa\radio;..\..\..\Middlewares\LoRa\radio\sx126x;..\..\..\Middlewares\LoRa\LoRaMac-node;..\..\..\Middlewares\LoRa\LoRaMac-node\region;..\..\..\Middlewares\LoRa\Core</IncludePath>
             </VariousControls>

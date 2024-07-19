@@ -16,6 +16,7 @@
 #include "ult.h"
 #include "pwm.h"
 #include "TMP117_I2C.h"
+#include <math.h>
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -44,8 +45,14 @@ extern uint16_t IC1[4],IC2[4];
 static float tmp117_temp_record=10;
 extern uint16_t intensity;
 extern uint16_t adc_resistance;
+extern bool debug_flags;
 
 static const int GUST_PERIOD = 2250;
+#define W_SIZE 300 // enough for 10 minutes
+static float wd[W_SIZE];
+static uint16_t ws[W_SIZE];
+static int w_begin = 0, w_end = 0;
+#define MAX_WIND_VANE_R 20000
 
 static TimerEvent_t GustTimer;
 static void OnGustTimerEvent( void );
@@ -56,6 +63,34 @@ static void OnGustTimerEvent( void )
    TimerStart(&GustTimer);
    if (count_gust > max_gust)
        max_gust = count_gust;
+	 
+	 
+	 POWER_IoInit();
+	 delay_ms(500);
+	 uint16_t mv = ADC_Read(3,0);
+	 POWER_IoDeInit();
+	 uint16_t r = (adc_resistance*100) * mv / (5000 - mv);
+	 if (r > MAX_WIND_VANE_R) {
+		r = MAX_WIND_VANE_R;
+	 }
+	 wd[w_end] = r*2*M_PI / MAX_WIND_VANE_R;
+	 ws[w_end] = count_gust;
+	 if (debug_flags==1) {
+		 LOG_PRINTF(LL_DEBUG,"mv:%u, r:%u, begin:%u, end:%u, last_wd:%f, last_ws:%u\r\n", mv, r, w_begin, w_end, wd[w_end], ws[w_end]);
+	 }
+	 if (w_end >= W_SIZE) { //circular buffer
+		 w_end = 0;
+		 w_begin = 1;
+	 }
+	 else {
+		 w_end++;
+	 }
+	 if (w_begin > w_end) {
+		 w_begin++;
+	 }
+	 if (w_begin >= W_SIZE) {
+		 w_begin = 0;
+	 }
    count_gust=0;
 }
 
@@ -184,7 +219,7 @@ void BSP_sensor_Init( void  )
 		LOG_PRINTF(LL_DEBUG,"\n\rUse Sensor is HX711\r\n");	
     delay_ms(20);		 
 	 }
-	 else if((workmode==7)||(workmode==9)||(workmode==12))	
+	 else if((workmode==7)||(workmode==9))	
 	 {
 		 GPIO_EXTI4_IoInit(inmode2);
 		 GPIO_EXTI15_IoInit(inmode3);		 
@@ -200,18 +235,19 @@ void BSP_sensor_Init( void  )
 		}			
 	 }
 	 
-	 if((workmode!=3)||(workmode!=8))
-	 {
-		GPIO_EXTI8_IoInit(inmode);	
-	 }
-	 
 	 if((workmode==3)||(workmode==8))
 	 {
 		 GPIO_EXTI15_IoInit(inmode3);
 	 }
+	 else if (workmode!=12)
+	 {
+		GPIO_EXTI8_IoInit(inmode);	
+	 }
 	 
 	 if (workmode==12)
 	 {
+			GPIO_EXTI4_IoInit(inmode2);
+			GPIO_EXTI15_IoInit(inmode3);
       TimerInit(&GustTimer, OnGustTimerEvent);
       TimerSetValue(&GustTimer, GUST_PERIOD);
       TimerStart(&GustTimer);
@@ -498,15 +534,50 @@ void BSP_sensor_Read( sensor_t *sensor_data , uint8_t message ,uint8_t mod_temp)
 	{
 		I2C_read_data(sensor_data,flags,message);
 		POWER_open_time(power_5v_time);
-		sensor_data->count_pa8=count1;
+		sensor_data->count_pb15=count1;
 		sensor_data->count_pa4=count2;
-		sensor_data->ADC_5=ADC_Read(2,message);
+		sensor_data->ADC_8=ADC_Read(3,message);
 		delay_ms(50);
+		
+		double v = 0;
+		double u = 0;
+		uint32_t w_total = 0;
+		if (w_begin > w_end) {	
+			for (int i=w_begin ; i<W_SIZE ; i++) {
+				u += ws[i] * sin(wd[i]);
+				v += ws[i] * cos(wd[i]);
+				w_total += ws[i];
+			}
+			for (int i=0 ; i<w_end ; i++) {
+				u += ws[i] * sin(wd[i]);
+				v += ws[i] * cos(wd[i]);
+				w_total += ws[i];
+			}
+		}
+		else
+		{
+			for (int i=w_begin ; i<w_end ; i++) {
+				u += ws[i] * sin(wd[i]);
+				v += ws[i] * cos(wd[i]);
+				w_total += ws[i];
+			}
+		}
+
+		if (w_total) {
+			double mean_wd = atan2(v / w_total, u / w_total);
+			uint16_t mean_wd_deg = (uint16_t)((5 * M_PI_2 - mean_wd) * 180 / M_PI) % 360;
+			sensor_data->wind_dir=mean_wd_deg;
+		} else {
+			sensor_data->wind_dir=0xFFFF;
+		}
+		
 		if(message==1)
 		{
-			LOG_PRINTF(LL_DEBUG,"PA8 count:%u\r\n",(unsigned int)count1);
+			LOG_PRINTF(LL_DEBUG,"PB15 count:%u\r\n",(unsigned int)count1);
 			LOG_PRINTF(LL_DEBUG,"Rate:%u\r\n",(unsigned int)intensity);
 			LOG_PRINTF(LL_DEBUG,"PA4 count:%u\r\n",(unsigned int)count2);
+			LOG_PRINTF(LL_DEBUG,"max gust:%u\r\n",(unsigned int)max_gust);
+			LOG_PRINTF(LL_DEBUG,"prevailing dir:%u\r\n",(unsigned int)sensor_data->wind_dir);
 			delay_ms(20);
 		}
 	}
