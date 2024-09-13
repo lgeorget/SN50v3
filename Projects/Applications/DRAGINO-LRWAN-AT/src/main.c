@@ -94,7 +94,7 @@ uint32_t count1=0,count2=0;
 
 TimerTime_t lastCountInt=0U;
 uint16_t intensity=0U;
-uint16_t adc_resistance=57000U;
+uint16_t adc_resistance=12000U;
 uint32_t count_gust=0,max_gust=0;
 
 uint8_t downlink_detect_switch=0;

@@ -569,8 +569,9 @@ void fdr_config(void)
 	inmode=2;		
 	inmode2=2;		
 	inmode3=2;
+	adc_resistance=120000U;
   GapValue=400.0;	
-	APP_TX_DUTYCYCLE=1200000;
+	APP_TX_DUTYCYCLE=600000;
 	REJOIN_TX_DUTYCYCLE=20;//min
 	if(password_default(password_get)==0)  //default 123456
 	{
