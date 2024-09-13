@@ -947,10 +947,10 @@ static void Send( void )
 		AppData.Buff[i++]=(intensity)>>8;
 		AppData.Buff[i++]=intensity & 0xFF;
 
-		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pb15)>>24;
-		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pb15)>>16;
-		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pb15)>>8;
-		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.count_pb15);
+		AppData.Buff[i++] =(int)(count1)>>24;
+		AppData.Buff[i++] =(int)(count1)>>16;
+		AppData.Buff[i++] =(int)(count1)>>8;
+		AppData.Buff[i++] =(int)(count1);
 
 		if(bh1750flags==1)
 		{
@@ -968,8 +968,8 @@ static void Send( void )
 		}
 
 		/* truncate the data, it should fit in a 16-bit counter anyway */
-		AppData.Buff[i++] = (bsp_sensor_data_buff.count_pa4)>>8;
-		AppData.Buff[i++] = bsp_sensor_data_buff.count_pa4 & 0xFF;
+		AppData.Buff[i++] = (count2)>>8;
+		AppData.Buff[i++] = count2 & 0xFF;
 		AppData.Buff[i++] = max_gust & 0xFF;
 		AppData.Buff[i++] =(int)(bsp_sensor_data_buff.wind_dir);
 

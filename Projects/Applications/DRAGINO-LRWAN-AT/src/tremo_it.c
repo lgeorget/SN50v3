@@ -233,11 +233,25 @@ void GPIO_IRQHandler(void)
 				{
 					exti2_flag=1;
 				}
-				else if(((workmode==9)||(workmode==12))&&((inmode2==2)||(inmode2==3)))
+				else if(((workmode==9))&&((inmode2==2)||(inmode2==3)))
 				{
 				 exti2_flag=1;
 				 count2++;
-				 count_gust++;
+				}
+				else if((workmode==12)&&((inmode2==2)||(inmode2==3)))
+				{
+					uint32_t diff = TimerGetElapsedTime(lastCountInt);
+					if (diff > LOCKOUT_INT_DELAY)
+					{
+						count1++;
+						exti_flag=1;
+						lastCountInt = TimerGetCurrentTime();
+						uint16_t newIntensity = 2 * 3600000 / diff;
+						if (newIntensity > intensity)
+						{
+							intensity = newIntensity;
+						}
+					}
 				}
 			}
 		  gpio_clear_interrupt(GPIOA, GPIO_PIN_4);
@@ -252,18 +266,9 @@ void GPIO_IRQHandler(void)
 			 }
 				else if((workmode==12)&&((inmode3==2)||(inmode3==3)))
 				{
-					uint32_t diff = TimerGetElapsedTime(lastCountInt);
-					if (diff > LOCKOUT_INT_DELAY)
-					{
-						count1++;
-						exti_flag=1;
-						lastCountInt = TimerGetCurrentTime();
-						uint16_t newIntensity = 2 * 3600000 / diff;
-						if (newIntensity > intensity)
-						{
-							intensity = newIntensity;
-						}
-					}
+				 exti2_flag=1;
+				 count2++;
+				 count_gust++;
 				}
 			}
 		  gpio_clear_interrupt(GPIOB, GPIO_PIN_15);

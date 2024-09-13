@@ -534,8 +534,8 @@ void BSP_sensor_Read( sensor_t *sensor_data , uint8_t message ,uint8_t mod_temp)
 	{
 		I2C_read_data(sensor_data,flags,message);
 		POWER_open_time(power_5v_time);
-		sensor_data->count_pb15=count1;
-		sensor_data->count_pa4=count2;
+		sensor_data->count_pa4=count1;
+		sensor_data->count_pb15=count2;
 		sensor_data->ADC_8=ADC_Read(3,message);
 		delay_ms(50);
 		
@@ -573,9 +573,9 @@ void BSP_sensor_Read( sensor_t *sensor_data , uint8_t message ,uint8_t mod_temp)
 		
 		if(message==1)
 		{
-			LOG_PRINTF(LL_DEBUG,"PB15 count:%u\r\n",(unsigned int)count1);
+			LOG_PRINTF(LL_DEBUG,"PA4 count:%u\r\n",(unsigned int)count1);
 			LOG_PRINTF(LL_DEBUG,"Rate:%u\r\n",(unsigned int)intensity);
-			LOG_PRINTF(LL_DEBUG,"PA4 count:%u\r\n",(unsigned int)count2);
+			LOG_PRINTF(LL_DEBUG,"PB15 count:%u\r\n",(unsigned int)count2);
 			LOG_PRINTF(LL_DEBUG,"max gust:%u\r\n",(unsigned int)max_gust);
 			LOG_PRINTF(LL_DEBUG,"prevailing dir:%u\r\n",(unsigned int)sensor_data->wind_dir);
 			delay_ms(20);
