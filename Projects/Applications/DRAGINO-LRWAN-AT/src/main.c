@@ -975,9 +975,9 @@ static void Send( void )
 
 		/* reset counters and max */
 		intensity = 0U;
-    max_gust = 0U;
-    count_gust = 0U;
-    count2 = 0U;
+		max_gust = 0U;
+		count_gust = 0U;
+		count2 = 0U;
 	}
 
 	AppData.BuffSize = i;

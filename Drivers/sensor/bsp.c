@@ -59,39 +59,37 @@ static void OnGustTimerEvent( void );
 
 static void OnGustTimerEvent( void )
 {
-   TimerSetValue(&GustTimer, GUST_PERIOD);
-   TimerStart(&GustTimer);
-   if (count_gust > max_gust)
-       max_gust = count_gust;
-	 
-	 
-	 POWER_IoInit();
-	 delay_ms(500);
-	 uint16_t mv = ADC_Read(3,0);
-	 POWER_IoDeInit();
-	 uint16_t r = (adc_resistance*100) * mv / (5000 - mv);
-	 if (r > MAX_WIND_VANE_R) {
+	TimerSetValue(&GustTimer, GUST_PERIOD);
+	TimerStart(&GustTimer);
+	if (count_gust > max_gust)
+		max_gust = count_gust;
+
+	POWER_IoInit();
+	uint16_t mv = ADC_Read(3,0);
+	POWER_IoDeInit();
+	uint16_t r = (adc_resistance*100) * mv / (5000 - mv);
+	if (r > MAX_WIND_VANE_R) {
 		r = MAX_WIND_VANE_R;
-	 }
-	 wd[w_end] = r*2*M_PI / MAX_WIND_VANE_R;
-	 ws[w_end] = count_gust;
-	 if (debug_flags==1) {
-		 LOG_PRINTF(LL_DEBUG,"mv:%u, r:%u, begin:%u, end:%u, last_wd:%f, last_ws:%u\r\n", mv, r, w_begin, w_end, wd[w_end], ws[w_end]);
-	 }
-	 if (w_end >= W_SIZE) { //circular buffer
-		 w_end = 0;
-		 w_begin = 1;
-	 }
-	 else {
-		 w_end++;
-	 }
-	 if (w_begin > w_end) {
-		 w_begin++;
-	 }
-	 if (w_begin >= W_SIZE) {
-		 w_begin = 0;
-	 }
-   count_gust=0;
+	}
+	wd[w_end] = r*2*M_PI / MAX_WIND_VANE_R;
+	ws[w_end] = count_gust;
+	if (debug_flags==1) {
+		LOG_PRINTF(LL_DEBUG,"mv:%u, r:%u, begin:%u, end:%u, last_wd:%f, last_ws:%u\r\n", mv, r, w_begin, w_end, wd[w_end], ws[w_end]);
+	}
+	if (w_end >= W_SIZE) { //circular buffer
+		w_end = 0;
+		w_begin = 1;
+	}
+	else {
+		w_end++;
+	}
+	if (w_begin > w_end) {
+		w_begin++;
+	}
+	if (w_begin >= W_SIZE) {
+		w_begin = 0;
+	}
+	count_gust=0;
 }
 
 
