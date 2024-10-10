@@ -120,6 +120,8 @@ extern void sensors_data(void);
 
 uint8_t write_key_in_flash_status=0,write_config_in_flash_status=0;
 
+extern uint32_t flash_sensor_data_pos;
+
 typedef struct {
 	char *cmd;
 	int (*fn)(int opt, int argc, char *argv[]);	
@@ -193,6 +195,7 @@ static int at_disfcntcheck_func(int opt, int argc, char *argv[]);
 static int at_dismacans_func(int opt, int argc, char *argv[]);
 static int at_rxdatatest_func(int opt, int argc, char *argv[]);
 static int at_adcres_func(int opt, int argc, char *argv[]);
+static int at_archive_func(int opt, int argc, char *argv[]);
 
 static at_cmd_t g_at_table[] = {
 	  {AT_DEBUG, at_debug_func},
@@ -262,6 +265,7 @@ static at_cmd_t g_at_table[] = {
 		{AT_DISMACANS, at_dismacans_func},
 		{AT_RXDATEST, at_rxdatatest_func},
 		{AT_ADCRES, at_adcres_func},
+		{AT_ARCHIVE, at_archive_func},
 };
 
 #define AT_TABLE_SIZE	(sizeof(g_at_table) / sizeof(at_cmd_t))
@@ -3428,6 +3432,71 @@ static int at_adcres_func(int opt, int argc, char *argv[])
     }
 
     return ret;			
+}
+
+static int at_archive_func(int opt, int argc, char *argv[])
+{
+	int ret = LWAN_PARAM_ERROR;
+
+	switch(opt) {
+		case QUERY_CMD:
+		{
+			snprintf((char *)atcmd, ATCMD_SIZE, "next entry position: %lu\r\n", flash_sensor_data_pos);
+			ret = LWAN_SUCCESS;
+			break;
+		}
+
+		case SET_CMD:
+		{
+			if(argc < 1) break;
+			const unsigned int ENTRY_LENGTH = 16U; // 4 bytes of timestamp + 12 bytes of data
+
+			int32_t iterator = strtol((const char *)argv[0], NULL, 0);
+			if (iterator < 0 || iterator > (FLASH_SENSOR_DATA_END_ADDR - FLASH_SENSOR_DATA_START_ADDR) || iterator % ENTRY_LENGTH != 0) {
+				ret = LWAN_PARAM_ERROR;
+				break;
+			}
+
+			unsigned int NB_ENTRIES = (FLASH_SENSOR_DATA_END_ADDR - FLASH_SENSOR_DATA_START_ADDR) / ENTRY_LENGTH;
+			unsigned int entry = 0;
+			// check the NB_ENTRIES in case the iterator got misaligned somehow and we miss the first condition
+			// it shouldn't happen but...
+			__disable_irq();
+			while (iterator != flash_sensor_data_pos && entry < NB_ENTRIES) {
+				for (uint8_t i = 0 ; i < ENTRY_LENGTH ; ++i) {
+					LOG_PRINTF(LL_DEBUG, "%02x", *((uint8_t*)(FLASH_SENSOR_DATA_START_ADDR + iterator + i)));
+				}
+				LOG_PRINTF(LL_DEBUG, "\n");
+
+				iterator += ENTRY_LENGTH;
+				if (iterator >= FLASH_SENSOR_DATA_END_ADDR) {
+					iterator = 0;
+				}
+				++entry;
+
+				// delay output to give time to DMA to flush the buffer
+				if (entry % 8 == 0) {
+					__enable_irq();
+					delay_ms(300);
+					__disable_irq();
+				}
+			}
+			__enable_irq();
+			ret = LWAN_SUCCESS;
+			snprintf((char *)atcmd, ATCMD_SIZE, "Data output to UART\r\n");
+			break;
+		}
+
+		case DESC_CMD:
+		{
+			ret = LWAN_SUCCESS;
+			snprintf((char *)atcmd, ATCMD_SIZE, "Output the position of the archive recorder, if a position is passed (AT+ARCHIVE=xxxx) only output values posterior to that position\r\n");
+			break;
+		}
+		default: break;
+	}
+
+	return ret;
 }
 
 

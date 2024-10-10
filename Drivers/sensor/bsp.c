@@ -478,6 +478,7 @@ void BSP_sensor_Read( sensor_t *sensor_data , uint8_t message ,uint8_t mod_temp)
 		sensor_data->count_pa8=count1;
 		if(message==1)
 		{
+			// Record the value in memory
 			LOG_PRINTF(LL_DEBUG,"PA8 count:%u\r\n",(unsigned int)count1);
 			LOG_PRINTF(LL_DEBUG,"Rate:%u\r\n",(unsigned int)intensity);
 			delay_ms(20);

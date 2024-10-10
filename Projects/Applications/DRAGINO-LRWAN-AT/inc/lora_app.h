@@ -236,6 +236,12 @@ LoraErrorStatus LORA_RequestClass( DeviceClass_t newClass );
  * @retval None
  */
 void LORA_GetCurrentClass( DeviceClass_t *currentClass );
+
+/**
+ * @brief Send a command to get time from the network
+ * @retval None
+ */
+void LORA_GetTime(void);
 /**
   * @brief  Set join activation process: OTAA vs ABP
   * @param  Over The Air Activation status to set: enable or disable

@@ -68,6 +68,7 @@ bool is_there_data=0;
 bool rejoin_status=0;
 bool rejoin_keep_status=0;
 bool is_time_to_rejoin=0;
+bool is_time_to_record=0;
 bool many_sends_flags=0;
 bool downlink_data_status=0;
 bool is_time_to_reply_downlink=0;
@@ -154,6 +155,7 @@ TimerEvent_t PressButtonTimeoutTimer;
 TimerEvent_t downlinkLedTimer;
 TimerEvent_t TxTimer;
 TimerEvent_t TxTimer2;
+TimerEvent_t HistoryTimer;
 TimerEvent_t NetworkJoinedLedTimer;
 TimerEvent_t IWDGRefreshTimer;
 TimerEvent_t ReJoinTimer;
@@ -163,6 +165,7 @@ TimerEvent_t UnconfirmedUplinkChangeToConfirmedUplinkTimeoutTimer;
 /* tx timer callback function*/
 static void OnTxTimerEvent( void );
 static void OnTxTimerEvent2( void );
+static void OnHistoryTimerEvent( void );
 void OndownlinkLedEvent(void);
 void OnCheckBLETimesEvent(void);
 void OnPressButtonTimesLedEvent(void);
@@ -195,6 +198,8 @@ void user_key_event(void);
 extern bool print_isdone(void);
 extern void printf_joinmessage(void);
 extern void weightreset(void);
+
+uint32_t flash_sensor_data_pos = 0;
 
 /* Private variables ---------------------------------------------------------*/
 /* load Main call backs structure*/
@@ -353,6 +358,10 @@ int main(void)
 
 	TimerInit( &downlinkLedTimer, OndownlinkLedEvent );
 
+	/* Start recording archives, until we are joined */
+	TimerInit( &HistoryTimer, OnHistoryTimerEvent );
+	OnHistoryTimerEvent();
+
 	while( 1 )
 	{
 		if (Radio.IrqProcess != NULL) {
@@ -391,6 +400,10 @@ int main(void)
 				unconfirmed_uplink_change_to_confirmed_uplink_status=0;
 				is_time_to_rejoin=0;
 				LORA_Join();
+				/* Start recording archives, until we are joined */
+				TimerInit( &HistoryTimer, OnHistoryTimerEvent );
+				TimerSetValue( &HistoryTimer, APP_TX_DUTYCYCLE );
+				TimerStart( &HistoryTimer );
 			}
 		}
 
@@ -405,6 +418,10 @@ int main(void)
 				TimerStop( &DownlinkDetectTimeoutTimer);
 				TimerStop( &UnconfirmedUplinkChangeToConfirmedUplinkTimeoutTimer);
 				LORA_Join();
+				/* Start recording archives, until we are joined */
+				TimerInit( &HistoryTimer, OnHistoryTimerEvent );
+				TimerSetValue( &HistoryTimer, APP_TX_DUTYCYCLE );
+				TimerStart( &HistoryTimer );
 			}
 		}
 
@@ -669,9 +686,13 @@ static void LORA_HasJoined( void )
 	LORA_RequestClass( LORAWAN_DEFAULT_CLASS );
 
 	LoraStartjoin();
+
+	TimerStop(&HistoryTimer);
+
+	LORA_GetTime();
 }
 
-static void Send( void )
+static void Send()
 {
 	if(EnterLowPowerStopModeStatus==0)
 	{
@@ -682,12 +703,6 @@ static void Send( void )
 	is_there_data=0;
 
 	check_pin_status();
-
-	if ( LORA_JoinStatus () != LORA_SET)
-	{
-		/*Not joined, try again later*/
-		return;
-	}
 
 	if(debug_flags==1)
 	{
@@ -940,6 +955,8 @@ static void Send( void )
 	}
 	else if(workmode==12)
 	{
+	sensor_t bsp_sensor_data_buff;
+	BSP_sensor_Read(&bsp_sensor_data_buff,message_flags,workmode);
 		AppData.Buff[i++] =(bsp_sensor_data_buff.bat_mv>>8);
 		AppData.Buff[i++] = bsp_sensor_data_buff.bat_mv & 0xFF;
 
@@ -968,6 +985,46 @@ static void Send( void )
 
 		/* reset max intensity */
 		intensity = 0U;
+
+		/* Store message in memory */
+		const int ENTRY_LENGTH = 16; // | 4 bytes of timestamp | 12 bytes of data |
+
+		if (FLASH_SENSOR_DATA_START_ADDR + flash_sensor_data_pos + ENTRY_LENGTH >= FLASH_SENSOR_DATA_END_ADDR) {
+			flash_sensor_data_pos = 0;
+		}
+
+		// it's necessary to align the flash writing to 0x80 boundaries
+		// so first copy a "page" of 128 bytes = 8 archive entries
+		uint8_t page[128];
+		uint32_t pageAddress = (FLASH_SENSOR_DATA_START_ADDR + flash_sensor_data_pos)&0xFFFFFF80;
+		memcpy(page, (uint8_t*)pageAddress, 128);
+
+		// and fill the correct entry
+		uint8_t* archive = page + (flash_sensor_data_pos & 0x0000007F);
+		SysTime_t time = SysTimeGet();
+		archive[0] = time.Seconds>>24;
+		archive[1] = time.Seconds>>16;
+		archive[2] = time.Seconds>>8;
+		archive[3] = time.Seconds;
+		memcpy(archive + 4, AppData.Buff, ENTRY_LENGTH - 4);
+
+		// write the entire page
+		if (flash_program_bytes(pageAddress, page, 128)==ERRNO_FLASH_SEC_ERROR)
+		{
+			LOG_PRINTF(LL_DEBUG, "write data history error\r\n");
+		}
+		else
+		{
+			LOG_PRINTF(LL_DEBUG, "written one data history entry ");
+			for (int i=0 ; i<ENTRY_LENGTH ; ++i) {
+				LOG_PRINTF(LL_DEBUG, "%02x", archive[i]);
+			}
+			LOG_PRINTF(LL_DEBUG, "\r\n");
+
+			flash_sensor_data_pos += ENTRY_LENGTH;
+			// store all of the config to store the flash_sensor_data_pos counter
+			Flash_Store_Config();
+		}
 	}
 
 	AppData.BuffSize = i;
@@ -980,13 +1037,16 @@ static void Send( void )
 	if(exit3_temp==1)
 		exit3_temp=0;
 
-	if(unconfirmed_uplink_change_to_confirmed_uplink_status==1)
+	if (LORA_JoinStatus() == LORA_SET)
 	{
-		LORA_send( &AppData, LORAWAN_CONFIRMED_MSG);
-	}
-	else
-	{
-		LORA_send( &AppData, lora_config_reqack_get());
+		if(unconfirmed_uplink_change_to_confirmed_uplink_status==1)
+		{
+			LORA_send( &AppData, LORAWAN_CONFIRMED_MSG);
+		}
+		else
+		{
+			LORA_send( &AppData, lora_config_reqack_get());
+		}
 	}
 }
 
@@ -1747,6 +1807,25 @@ static void LoraStartjoin(void)
 	TimerInit( &TxTimer2, OnTxTimerEvent2 );
 	TimerSetValue( &TxTimer2, 1000);
 	OnTxTimerEvent2();
+}
+
+static void OnHistoryTimerEvent( void )
+{
+	LOG_PRINTF(LL_DEBUG,"Archiving started\r\n");
+	if (LORA_JoinStatus()==LORA_SET)
+	{
+		LOG_PRINTF(LL_DEBUG,"Archiving stopped\r\n");
+		// archive will be recorded in the TX workflow instead
+		TimerStop(&HistoryTimer);
+	}
+	else
+	{
+		LOG_PRINTF(LL_DEBUG,"Archiving time\r\n");
+		TimerSetValue(&HistoryTimer, APP_TX_DUTYCYCLE);
+		TimerStart(&HistoryTimer);
+
+		Send();
+	}
 }
 
 static void OnIWDGRefreshTimeoutEvent( void )

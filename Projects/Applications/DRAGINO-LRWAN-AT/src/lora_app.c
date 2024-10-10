@@ -157,6 +157,7 @@ extern uint8_t LinkADR_NbTrans_retransmission_nbtrials;
 extern uint16_t unconfirmed_uplink_change_to_confirmed_uplink_timeout;
 
 extern uint16_t adc_resistance;
+extern uint32_t flash_sensor_data_pos;
 
 extern bool print_isdone(void);
 
@@ -844,6 +845,15 @@ void LORA_GetCurrentClass( DeviceClass_t *currentClass )
   *currentClass = mibReq.Param.Class;
 }
 
+void LORA_GetTime(void)
+{
+	MlmeReq_t mlmeReq;
+
+	mlmeReq.Type = MLME_DEVICE_TIME;
+
+	LoRaMacMlmeRequest( &mlmeReq );
+}
+
 
 void lora_config_otaa_set(LoraState_t otaa)
 {
@@ -1258,6 +1268,10 @@ void Flash_Store_Config(void)
 	store_config_in_flash[78]=pwm_timer;
 	store_config_in_flash[79] = (adc_resistance)>>8 & 0xFF;
 	store_config_in_flash[80] = adc_resistance;
+	store_config_in_flash[81] = flash_sensor_data_pos>>24;
+	store_config_in_flash[82] = flash_sensor_data_pos>>16;
+	store_config_in_flash[83] = flash_sensor_data_pos>>8;
+	store_config_in_flash[84] = flash_sensor_data_pos;
 	
 	__disable_irq();	
 	flash_erase_page(FLASH_USER_START_ADDR_CONFIG);
@@ -1428,6 +1442,8 @@ void Flash_Read_Config(void)
 	
 	pwm_timer=read_config_in_flash[78];
 	adc_resistance = read_config_in_flash[79]<<8 | read_config_in_flash[80];
+
+	flash_sensor_data_pos = read_config_in_flash[81]<<24 | read_config_in_flash[82]<<16 | read_config_in_flash[83]<<8 | read_config_in_flash[84];
 }
 
 uint8_t string_touint(void)

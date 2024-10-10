@@ -86,6 +86,7 @@
 #define AT_DISMACANS 	   	  "+DISMACANS"
 #define AT_RXDATEST  			  "+RXDATEST"
 #define AT_ADCRES			"+ADCRES"
+#define AT_ARCHIVE			"+ARCHIVE"
 
 void set_at_receive(uint8_t AppPort, uint8_t* Buff, uint8_t BuffSize);
 void linkwan_at_init(void);
