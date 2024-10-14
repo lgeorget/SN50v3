@@ -569,7 +569,7 @@ void fdr_config(void)
 	inmode=2;		
 	inmode2=2;		
 	inmode3=2;
-	adc_resistance=120000U;
+	adc_resistance=1200U; // 120kOhms
   GapValue=400.0;	
 	APP_TX_DUTYCYCLE=600000;
 	REJOIN_TX_DUTYCYCLE=20;//min
