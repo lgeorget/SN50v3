@@ -423,7 +423,7 @@ int main(void)
 
 		if(joined_finish==1)
 		{
-			if(((workmode!=6)&&(workmode!=9)&&(workmode!=10)&&(workmode!=3)&&(workmode!=8))&&(exti_flag==1))
+			if(((workmode!=6)&&(workmode!=9)&&(workmode!=10)&&(workmode!=3)&&(workmode!=8)&&(workmode!=12))&&(exti_flag==1))
 			{
 				if((( LoRaMacState & 0x00000001 ) != 0x00000001 )&&(( LoRaMacState & 0x00000010 ) != 0x00000010))
 				{
