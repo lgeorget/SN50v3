@@ -1988,6 +1988,8 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest );
  */
 LoRaMacStatus_t LoRaMacMcpsRequest( McpsReq_t *mcpsRequest );
 
+void LORA_QueryTime(void);
+
 /*! \} defgroup LORAMAC */
 
 #ifdef __cplusplus

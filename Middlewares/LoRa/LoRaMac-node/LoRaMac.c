@@ -2190,7 +2190,7 @@ static void ProcessMacCommands( uint8_t *payload, uint8_t macIndex, uint8_t comm
 										sysTime = SysTimeAdd( sysTimeCurrent, SysTimeSub( sysTime, LastTxdoneTime ) );
 										if(sysTime.Seconds>1611878400)//20210129 00:00:00
 										{
-											LOG_PRINTF(LL_DEBUG,"Sync time ok\r");
+											LOG_PRINTF(LL_DEBUG,"Sync time ok: %lus\r", sysTime.Seconds);
 											// Apply the new system time.
 											SysTimeSet( sysTime );
 								
@@ -3683,7 +3683,7 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
             status = SetTxContinuousWave1( mlmeRequest->Req.TxCw.Timeout, mlmeRequest->Req.TxCw.Frequency, mlmeRequest->Req.TxCw.Power );
             break;
         }
-				case MLME_DEVICE_TIME:
+        case MLME_DEVICE_TIME:
         {
             LoRaMacFlags.Bits.MlmeReq = 1;
             // LoRaMac will send this command piggy-pack

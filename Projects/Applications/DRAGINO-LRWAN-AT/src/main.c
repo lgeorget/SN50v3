@@ -76,6 +76,7 @@ bool JoinReq_NbTrails_over=0;
 bool unconfirmed_downlink_data_ans_status=0,confirmed_downlink_data_ans_status=0;
 bool MAC_COMMAND_ANS_status=0;
 bool mac_response_flag=0;
+bool is_time_to_sync_time=0;
 uint8_t press_button_times=0;//Press the button times in a row fast
 uint8_t OnPressButtonTimeout_status=0;
 uint8_t user_key_exti_flag=0;
@@ -147,6 +148,8 @@ static void StartIWDGRefresh(void);
 static void LoraStartRejoin(void);
 static void StartDownlinkDetect(void);
 static void StartUnconfirmedUplinkChangeToConfirmedUplinkTimeoutTimer(void);
+static void StartSyncTimeTimer(void);
+
 
 TimerEvent_t CheckBLETimesTimer;
 TimerEvent_t PressButtonTimesLedTimer;
@@ -159,6 +162,7 @@ TimerEvent_t IWDGRefreshTimer;
 TimerEvent_t ReJoinTimer;
 TimerEvent_t DownlinkDetectTimeoutTimer;
 TimerEvent_t UnconfirmedUplinkChangeToConfirmedUplinkTimeoutTimer;
+TimerEvent_t SyncTimeTimer;
 
 /* tx timer callback function*/
 static void OnTxTimerEvent( void );
@@ -173,6 +177,7 @@ static void OnIWDGRefreshTimeoutEvent(void);
 static void OnReJoinTimerEvent( void );
 static void OnDownlinkDetectTimeoutEvent( void );
 static void UnconfirmedUplinkChangeToConfirmedUplinkTimeoutEvent( void );
+static void OnSyncTimeTimerEvent( void );
 
 void board_init(void);
 void sensors_data(void);
@@ -329,6 +334,21 @@ void* _sbrk(int nbytes)
 	}
 }
 
+static void setAppTxTimer(void)
+{
+	SysTime_t st = SysTimeGet();
+	uint32_t nextTx = APP_TX_DUTYCYCLE;
+	if (st.Seconds > 1700000000) { // ~14 nov 2023, just to check if the time is not around 0 (clock not synced yet)
+		nextTx -= (st.Seconds % (APP_TX_DUTYCYCLE / 1000)) * 1000;
+		nextTx -= st.SubSeconds;
+		if (nextTx < 60000) { // can happen just after resync if the rtc is a little too fast
+			nextTx += APP_TX_DUTYCYCLE;
+		}
+	}
+	TimerSetValue(&TxTimer, nextTx); 
+	LOG_PRINTF(LL_DEBUG,"known current time is %lu.%03d, next data Tx will be done in %lu ms\n\r", st.Seconds, st.SubSeconds, nextTx);
+}
+
 int main(void)
 {
 	// Target board initialization
@@ -404,6 +424,7 @@ int main(void)
 				TimerStop(&TxTimer);
 				TimerStop( &DownlinkDetectTimeoutTimer);
 				TimerStop( &UnconfirmedUplinkChangeToConfirmedUplinkTimeoutTimer);
+				TimerStop(&SyncTimeTimer);
 				LORA_Join();
 			}
 		}
@@ -471,7 +492,8 @@ int main(void)
 				atz_flags++;
 			}
 			else if((atz_flags==2)&&(( LoRaMacState & 0x00000001 ) != 0x00000001))
-			{
+			{                     
+				LOG_PRINTF(LL_DEBUG,"system resetting\n\r");
 				system_reset();
 			}
 
@@ -591,6 +613,11 @@ int main(void)
 				Send();
 				uplink_data_status=0;
 			}
+			
+			if ((is_time_to_sync_time==1)&&(( LoRaMacState & 0x00000001 ) != 0x00000001)&&(( LoRaMacState & 0x00000010 ) != 0x00000010)) {
+				LORA_QueryTime();
+				is_time_to_sync_time=0;
+			}
 		}
 
 		if(JoinReq_NbTrails_over==1)
@@ -618,6 +645,7 @@ int main(void)
 			if((IWDG_Refresh_times_total_time>txdone_detection_timeout) && sleep_status==0 && joined_flags==0)
 			{
 				IWDG_Refresh_times=0;
+				LOG_PRINTF(LL_DEBUG,"system unresponsive, resetting\n\r");
 				system_reset();
 			}
 
@@ -656,6 +684,8 @@ static void LORA_HasJoined( void )
 	join_network=1;
 
 	LOG_PRINTF(LL_DEBUG,"JOINED\n\r");
+
+	StartSyncTimeTimer();
 
 	rejoin_keep_status=0;
 
@@ -1628,7 +1658,7 @@ static void LORA_RxData( lora_AppData_t *AppData )
 	{
 		Flash_Store_Config();
 		TimerInit( &TxTimer, OnTxTimerEvent );
-		TimerSetValue( &TxTimer,  APP_TX_DUTYCYCLE);
+		setAppTxTimer();
 		TimerStart( &TxTimer);
 		TimerStart( &IWDGRefreshTimer);
 		TDC_flag=0;
@@ -1691,10 +1721,10 @@ static void LORA_RxData( lora_AppData_t *AppData )
 
 static void OnTxTimerEvent( void )
 {
-	TimerSetValue( &TxTimer,  APP_TX_DUTYCYCLE);
+	setAppTxTimer();
 
 	/*Wait for next tx slot*/
-	TimerStart( &TxTimer);
+	TimerStart(&TxTimer);
 
 	uplink_data_status=1;
 
@@ -1708,7 +1738,6 @@ static void LoraStartTx(void)
 {
 	/* send everytime timer elapses */
 	TimerInit( &TxTimer, OnTxTimerEvent );
-	TimerSetValue( &TxTimer,  APP_TX_DUTYCYCLE);
 	OnTxTimerEvent();
 }
 
@@ -1843,6 +1872,20 @@ static void StartUnconfirmedUplinkChangeToConfirmedUplinkTimeoutTimer(void)
 	TimerInit( &UnconfirmedUplinkChangeToConfirmedUplinkTimeoutTimer, UnconfirmedUplinkChangeToConfirmedUplinkTimeoutEvent );
 	TimerSetValue( &UnconfirmedUplinkChangeToConfirmedUplinkTimeoutTimer,  unconfirmed_uplink_change_to_confirmed_uplink_timeout*60000);
 	TimerStart( &UnconfirmedUplinkChangeToConfirmedUplinkTimeoutTimer);
+}
+
+static void StartSyncTimeTimer(void)
+{
+	TimerInit(&SyncTimeTimer, OnSyncTimeTimerEvent);
+	OnSyncTimeTimerEvent();
+}
+
+static void OnSyncTimeTimerEvent( void )
+{
+	TimerSetValue(&SyncTimeTimer, 3600000); // 1 hour
+	TimerStart(&SyncTimeTimer);
+
+	is_time_to_sync_time=1;
 }
 
 void LoraStartCheckBLE(void)

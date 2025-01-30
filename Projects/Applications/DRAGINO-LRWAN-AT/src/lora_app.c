@@ -723,6 +723,15 @@ LoraFlagStatus LORA_JoinStatus( void)
   }
 }
 
+
+void LORA_QueryTime( void)
+{
+			// piggy-back the time request commande
+			MlmeReq_t mlmeReqTime;
+			mlmeReqTime.Type = MLME_DEVICE_TIME;  
+			LoRaMacMlmeRequest( &mlmeReqTime );
+}
+
 LoraErrorStatus LORA_send(lora_AppData_t* AppData, LoraConfirm_t IsTxConfirmed)
 {
     McpsReq_t mcpsReq;
