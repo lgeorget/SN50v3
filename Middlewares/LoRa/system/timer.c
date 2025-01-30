@@ -270,12 +270,11 @@ SysTime_t SysTimeGetMcuTime( void )
 
 uint32_t SysTimeToMs( SysTime_t sysTime )
 {
-    SysTime_t deltaTime = { 0 };
-
-		deltaTime.Seconds = (uint32_t)(g_systime_ref/1000);
-		deltaTime.SubSeconds = (uint16_t)(g_systime_ref%1000);
+		SysTime_t DeltaTime = { 0 };
+		DeltaTime.Seconds=(*((uint8_t *)(0x2000F000)))<<24|(*((uint8_t *)(0x2000F001)))<<16|(*((uint8_t *)(0x2000F002)))<<8|(*((uint8_t *)(0x2000F003)));
+		DeltaTime.SubSeconds=(*((uint8_t *)(0x2000F004)))<<8|(*((uint8_t *)(0x2000F005)));
 		
-    SysTime_t calendarTime = SysTimeSub( sysTime, deltaTime );
+    SysTime_t calendarTime = SysTimeSub( sysTime, DeltaTime );
 
     return calendarTime.Seconds * 1000 + calendarTime.SubSeconds;
 }
